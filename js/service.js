@@ -1,6 +1,6 @@
 /**
  * service.js
- *
+ * scott linne 2014
  * Computer Science 50
  * Problem Set 8
  *
@@ -36,6 +36,30 @@ var map = null;
 
 // global reference to shuttle
 var shuttle = null;
+
+// initialize points counter
+var points = 0;
+// initialize counter for total passengers dropped off
+var total_dropped = 0;
+
+var COLOR = 
+{
+    "Adams House": {color: "#FF0000"},
+    "Cabot House": {color: "#0000FF"},
+    "Currier House": {color: "#66FF33"},
+    "Dunster House": {color: "#0000FF"},
+    "Eliot House": {color: "#FF0000"},
+    "Kirkland House": {color: "#0000FF"},
+    "Leverett House": {color: "#FF0000"},
+    "Lowell House": {color: "#0000FF"},
+    "Mather House": {color: "#FF0000"},
+    "Pforzheimer House": {color: "#0000FF"},
+    "Quincy House": {color: "#FF0000"},
+    "Winthrop House": {color: "#0000FF"}
+};
+
+
+
 
 // load version 1 of the Google Earth API
 google.load("earth", "1");
@@ -89,7 +113,7 @@ function chart()
         }
         else
         {
-            html += "<li>" + PASSENGERS[i].name + "</li>";
+            html += "<li style=color:" +COLOR[shuttle.seats[i].house].color+ ">" + shuttle.seats[i].name + " to " + shuttle.seats[i].house + "</li>";
         }
     }
     html += "</ol>";
@@ -101,7 +125,56 @@ function chart()
  */
 function dropoff()
 {
-    alert("TODO");
+    
+    // initialize a variable to check for a dropoff occuring
+    var dropped = 0;
+    
+    // if shuttle distance within 30 meters of a passengers house 
+    // drop them off and empty the seat
+    
+    
+    // iterate over the shuttle seats
+    for(var k = 0; k < shuttle.seats.length; k++)
+    {
+
+        // skip any seats that are empty        
+        if(shuttle.seats[k] != null)
+        {
+         
+            var dist = shuttle.distance(HOUSES[shuttle.seats[k].house].lat, HOUSES[shuttle.seats[k].house].lng);
+            
+            // if distance of shuttle to house is less than 30
+            // then remove the student from the shuttle
+            if(dist < 30)
+            {
+                // empty a seat
+                shuttle.seats[k] = null;
+                
+                // update the chart
+                chart();
+                
+                points++;
+                $("#announcements").html("your score is " + points + " points.");
+                
+                // update the dropped varible to indicate a dropoff occured
+                var dropped = 1;
+                // count how many passengers in total have been dropped off to indicate end of game
+               total_dropped++;
+            }
+        }
+        
+    }
+    // if dropped variable is still 0 we are not in range of a house for dropoff
+    if(dropped == 0)
+    {
+        $("#announcements").html("No houses in range for dropoff <br> your score is " + points + " points");
+        
+    }
+    if(total_dropped == (102 - 3))
+    {
+        $("#announcements").html("All passengers have been picked up and dropped off");
+    }
+    
 }
 
 /**
@@ -189,6 +262,7 @@ function keystroke(event, state)
     if (event.keyCode == 37)
     {
         shuttle.states.turningLeftward = state;
+        $("#announcements").html("no new messages"); 
         return false;
     }
 
@@ -196,6 +270,7 @@ function keystroke(event, state)
     else if (event.keyCode == 38)
     {
         shuttle.states.tiltingUpward = state;
+        $("#announcements").html("no new messages"); 
         return false;
     }
 
@@ -203,6 +278,7 @@ function keystroke(event, state)
     else if (event.keyCode == 39)
     {
         shuttle.states.turningRightward = state;
+        $("#announcements").html("no new messages"); 
         return false;
     }
 
@@ -210,6 +286,7 @@ function keystroke(event, state)
     else if (event.keyCode == 40)
     {
         shuttle.states.tiltingDownward = state;
+        $("#announcements").html("no new messages"); 
         return false;
     }
 
@@ -217,6 +294,7 @@ function keystroke(event, state)
     else if (event.keyCode == 65 || event.keyCode == 97)
     {
         shuttle.states.slidingLeftward = state;
+        $("#announcements").html("no new messages"); 
         return false;
     }
 
@@ -224,23 +302,47 @@ function keystroke(event, state)
     else if (event.keyCode == 68 || event.keyCode == 100)
     {
         shuttle.states.slidingRightward = state;
+       $("#announcements").html("no new messages");
         return false;
+       
     }
   
     // S, s
     else if (event.keyCode == 83 || event.keyCode == 115)
     {
-        shuttle.states.movingBackward = state;     
+        shuttle.states.movingBackward = state; 
+      $("#announcements").html("no new messages");    
         return false;
+       
     }
 
     // W, w
     else if (event.keyCode == 87 || event.keyCode == 119)
     {
-        shuttle.states.movingForward = state;    
+        shuttle.states.movingForward = state;  
+        $("#announcements").html("no new messages");
+         
+        return false;
+      
+    }
+      // speed up with r, R
+    else if (event.keyCode == 82 || event.keyCode == 114)
+    {
+        shuttle.velocity = shuttle.velocity + 2;   
+        $("#announcements").html("Current speed is: " + shuttle.velocity); 
         return false;
     }
-  
+    // speed down with e, E
+    else if (event.keyCode == 69 || event.keyCode == 101)
+    {
+        shuttle.velocity = shuttle.velocity - 2;   
+        $("#announcements").html("Current speed is: " + shuttle.velocity);        
+        return false;
+    }
+    
+    
+   
+    
     return true;
 }
 
@@ -261,11 +363,14 @@ function load()
     });
 
     // prepare shuttle's icon for map
-    bus = new google.maps.Marker({
+        bus = new google.maps.Marker({
         icon: "https://maps.gstatic.com/intl/en_us/mapfiles/ms/micons/bus.png",
         map: map,
         title: "you are here"
-    });
+        });
+    
+  
+
 
     // embed 3D Earth in DOM
     google.earth.createInstance("earth", initCB, failureCB);
@@ -275,41 +380,76 @@ function load()
  * Picks up nearby passengers.
  */
 function pickup()
-{
-
-    // iterate over shuttle seats
-    for(var i = 0; i < shuttle.seats.length; i++)
-    {
-        if(shuttle.seats[i] == null)
+{   
+        // variable to indicate nobody was added to the bus
+        // will change later to 1 if someone is added to the buss
+        added = 0;
+        // iterate over passengers
+        for(var i = 0; i < PASSENGERS.length; i++)
         {
-            return seat = "open";
-        }
-        else
-        {
-            return seat = "full";
-        }
-        
-    }
-    
-         // iterate over passengers
-    for(var i = 0; i < PASSENGERS.length; i++)
-    {
-        var lat = PASSENGERS[i].placemark.getGeometry().getLatitude();
-        var lng = PASSENGERS[i].placemark.getGeometry().getLongitude();
-        var d = shuttle.distance(lat,lng);
-        if(d < 15 && seat == "open")
-        {
-            
-        }
-        
-    }
-    
-    
-    
-    // alert("TODO");
-  
-    
+            if(PASSENGERS[i].placemark != null)
+            {
+                var lat = PASSENGERS[i].placemark.getGeometry().getLatitude();
+                var lng = PASSENGERS[i].placemark.getGeometry().getLongitude();
+                var d = shuttle.distance(lat,lng);
+                
+                // if passengers is under 15 meters from bus, pick them up
+                if(d < 15)
+                {
+                    if(PASSENGERS[i].house in HOUSES == false)
+                    {
+                        $("#announcements").html("Sorry no freshmen can ride this bus");
+                        break;
+                    }
+                    
+                    // iterate over shuttle seats adding passenger to seat, update chart
+                    for(var j = 0; j < shuttle.seats.length; j++)
+                    {
+                         // initialize a variable to check for a full bus
+                         fullbus = 1;
+                         // check if a seat is open
+                        if(shuttle.seats[j] == null)
+                        {   
+                            // if there is an open seat, change the full bus variable to zero
+                            // this variable will stay zero as long as there is an open seat
+                            fullbus = 0;
+                            
+                            // assign a passenger to the shuttle seat
+                            shuttle.seats[j] = PASSENGERS[i]
+                            chart();
+                            
+                            // person was added to the buss
+                            added = 1;
+                            
+                            // Remove passengers placemark and marker from the earh and map
+                            var features = earth.getFeatures();
+                            features.removeChild(PASSENGERS[i].placemark);
+                            PASSENGERS[i].placemark = null;
+                            PASSENGERS[i].marker.setMap(null);
+                            PASSENGERS[i].marker = null;
+                            
+                            // break out of the loop so as to only add the passenger to one seat 
+                            break;
+                        }
+                        
+                    }    
+                    // if the shuttle does not have an open seat, announce it is full
+                    // variable fullbus will have a value of 1 if althe seats are occupied
+                    if(fullbus == 1)
+                    {
+                        $("#announcements").html("Sorry, the shuttle is full");
+                    }          
+                }
+            }
+            // if no passengers are within 15 meters, announce they are out of range
+            if(added == 0)
+            {
+                $("#announcements").html("Sorry no passengers in range");
+            }
+        }      
 }
+
+
 /**
  * Populates Earth with passengers and houses.
  */
@@ -342,7 +482,7 @@ function populate()
 
         // prepare icon
         var icon = earth.createIcon("");
-        icon.setHref(url + "/img/" + PASSENGERS[i].username + ".jpg");
+        icon.setHref(url + "/img/" + PASSENGERS[i].username + ".jpg");  
 
         // prepare style
         var style = earth.createStyle("");
@@ -394,6 +534,7 @@ function viewchange()
     map.setCenter(latlng);
     bus.setPosition(latlng);
 }
+    
 
 /**
  * Unloads Earth.
